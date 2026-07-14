@@ -19,16 +19,14 @@ from typing import Any
 import aiohttp
 
 from .const import (
-    APP_ID,
-    APP_SECRET,
     APP_ID_PROPERTY,
-    AYLA_EU_ADS_URL,
-    AYLA_EU_USER_URL,
     CLOUD_HTTP_RETRY_BACKOFF,
     CLOUD_HTTP_RETRY_COUNT,
     CLOUD_TRANSIENT_HTTP_CODES,
+    DEFAULT_REGION,
     GIGYA_API_KEY,
     GIGYA_BASE_URL,
+    REGIONS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -63,17 +61,29 @@ class AylaDevice:
 class DelonghiAylaClient:
     """Client for Gigya + Ayla flow."""
 
-    def __init__(self, session: aiohttp.ClientSession, email: str, password: str) -> None:
+    def __init__(
+        self,
+        session: aiohttp.ClientSession,
+        email: str,
+        password: str,
+        region: str = DEFAULT_REGION,
+    ) -> None:
         self._session = session
         self._email = email
         self._password = password
+        self._region = region if region in REGIONS else DEFAULT_REGION
+        cfg = REGIONS[self._region]
+        self._app_id = cfg["app_id"]
+        self._app_secret = cfg["app_secret"]
+        self._ads_url = cfg["ads_url"]
+        self._user_url = cfg["user_url"]
         self._access_token: str | None = None
         self._refresh_token: str | None = None
         self._expires_at: float = 0
 
     @property
     def ads_url(self) -> str:
-        return AYLA_EU_ADS_URL
+        return self._ads_url
 
     async def async_authenticate(self) -> None:
         """Perform full auth chain: Gigya -> JWT -> Ayla SSO."""
@@ -208,6 +218,7 @@ class DelonghiAylaClient:
             },
         ) as resp:
             body = json.loads(await resp.text())
+        _LOGGER.debug("Gigya accounts.login -> errorCode=%s", body.get("errorCode"))
         if body.get("errorCode") != 0:
             raise AuthError(f"Gigya login failed: {body.get('errorMessage')} (code {body.get('errorCode')})")
 
@@ -234,19 +245,29 @@ class DelonghiAylaClient:
         params["sig"] = sig
         async with self._session.post(url, data=params) as resp:
             jwt_body = json.loads(await resp.text())
+        _LOGGER.debug(
+            "Gigya accounts.getJWT -> errorCode=%s (id_token len=%s)",
+            jwt_body.get("errorCode"),
+            len(jwt_body.get("id_token", "")),
+        )
         if jwt_body.get("errorCode") != 0:
             raise AuthError(f"Gigya getJWT failed: {jwt_body.get('errorMessage')}")
         return jwt_body["id_token"]
 
     async def _ayla_sso_sign_in(self, jwt_token: str) -> None:
         """Exchange JWT for Ayla access_token (form-urlencoded)."""
-        url = f"{AYLA_EU_USER_URL}/api/v1/token_sign_in"
-        data = {"token": jwt_token, "app_id": APP_ID, "app_secret": APP_SECRET}
+        url = f"{self._user_url}/api/v1/token_sign_in"
+        data = {"token": jwt_token, "app_id": self._app_id, "app_secret": self._app_secret}
         async with self._session.post(url, data=data) as resp:
-            if resp.status not in (200, 201):
-                text = await resp.text()
-                raise AuthError(f"Ayla SSO failed (HTTP {resp.status}): {text[:300]}")
-            body = await resp.json()
+            status = resp.status
+            text = await resp.text()
+        _LOGGER.debug(
+            "Ayla token_sign_in %s (region=%s, app_id=%s) -> HTTP %d; body: %s",
+            url, self._region, self._app_id, status, text[:300],
+        )
+        if status not in (200, 201):
+            raise AuthError(f"Ayla SSO failed (HTTP {status}): {text[:300]}")
+        body = json.loads(text)
         if "access_token" not in body:
             raise AuthError(f"Ayla SSO: no access_token in response: {body}")
         self._access_token = body["access_token"]
@@ -256,9 +277,23 @@ class DelonghiAylaClient:
     async def async_get_devices(self) -> list[AylaDevice]:
         """List all Ayla devices tied to this account."""
         await self.async_ensure_auth()
-        url = f"{AYLA_EU_ADS_URL}/apiv1/devices.json"
+        url = f"{self._ads_url}/apiv1/devices.json"
         async with self._session.get(url, headers=self._auth_headers()) as resp:
-            data = await resp.json()
+            status = resp.status
+            text = await resp.text()
+        data = json.loads(text) if text.strip() else []
+        _LOGGER.debug(
+            "Ayla devices.json %s -> HTTP %d; count=%s; body: %s",
+            url,
+            status,
+            len(data) if isinstance(data, list) else "n/a",
+            text[:400],
+        )
+        if not isinstance(data, list):
+            _LOGGER.warning(
+                "Ayla devices.json returned non-list (HTTP %d): %s", status, text[:300]
+            )
+            return []
         devices: list[AylaDevice] = []
         for wrap in data:
             d = wrap.get("device", wrap)
@@ -278,7 +313,7 @@ class DelonghiAylaClient:
     async def async_get_properties(self, dsn: str) -> dict[str, Any]:
         """Fetch all properties of a device, keyed by property name."""
         await self.async_ensure_auth()
-        url = f"{AYLA_EU_ADS_URL}/apiv1/dsns/{dsn}/properties.json"
+        url = f"{self._ads_url}/apiv1/dsns/{dsn}/properties.json"
         async with self._session.get(url, headers=self._auth_headers()) as resp:
             data = await resp.json()
         props: dict[str, Any] = {}
@@ -294,7 +329,7 @@ class DelonghiAylaClient:
     ) -> dict[str, Any]:
         """Write a value to a device property (e.g. data_request)."""
         await self.async_ensure_auth()
-        url = f"{AYLA_EU_ADS_URL}/apiv1/dsns/{dsn}/properties/{property_name}/datapoints.json"
+        url = f"{self._ads_url}/apiv1/dsns/{dsn}/properties/{property_name}/datapoints.json"
         async with self._session.post(
             url, headers=self._auth_headers(), json={"datapoint": {"value": value}}
         ) as resp:
@@ -308,7 +343,7 @@ class DelonghiAylaClient:
     async def async_get_property(self, dsn: str, property_name: str) -> dict[str, Any]:
         """Fetch a single device property (fallback when coordinator.data is empty)."""
         await self.async_ensure_auth()
-        url = f"{AYLA_EU_ADS_URL}/apiv1/dsns/{dsn}/properties/{property_name}.json"
+        url = f"{self._ads_url}/apiv1/dsns/{dsn}/properties/{property_name}.json"
         async with self._session.get(url, headers=self._auth_headers()) as resp:
             if resp.status != 200:
                 text = await resp.text()
@@ -325,7 +360,7 @@ class DelonghiAylaClient:
         self, dsn: str, property_name: str
     ) -> dict[str, Any]:
         """Eletta-only: GET with retry (confirm loop live app_id polling)."""
-        url = f"{AYLA_EU_ADS_URL}/apiv1/dsns/{dsn}/properties/{property_name}.json"
+        url = f"{self._ads_url}/apiv1/dsns/{dsn}/properties/{property_name}.json"
         data = await self._request_json(
             "GET",
             url,
@@ -365,7 +400,7 @@ class DelonghiAylaClient:
             len(payload),
         )
         url = (
-            f"{AYLA_EU_ADS_URL}/apiv1/dsns/{dsn}/properties/"
+            f"{self._ads_url}/apiv1/dsns/{dsn}/properties/"
             f"{connected_property}/datapoints.json"
         )
         result = await self._request_json(

@@ -11,7 +11,7 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .ayla_client import AuthError, CloudError, DelonghiAylaClient
-from .const import CONF_EMAIL, CONF_PASSWORD, DOMAIN
+from .const import CONF_EMAIL, CONF_PASSWORD, CONF_REGION, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -19,6 +19,9 @@ STEP_USER_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_EMAIL): str,
         vol.Required(CONF_PASSWORD): str,
+        vol.Required(CONF_REGION, default="us"): vol.In(
+            {"us": "United States", "eu": "Europe / rest of world"}
+        ),
     }
 )
 
@@ -35,8 +38,9 @@ class DelonghiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             email = user_input[CONF_EMAIL].strip()
             password = user_input[CONF_PASSWORD]
+            region = user_input[CONF_REGION]
             session = async_get_clientsession(self.hass)
-            client = DelonghiAylaClient(session, email, password)
+            client = DelonghiAylaClient(session, email, password, region)
             try:
                 await client.async_authenticate()
                 devices = await client.async_get_devices()
@@ -58,7 +62,11 @@ class DelonghiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     self._abort_if_unique_id_configured()
                     return self.async_create_entry(
                         title=f"DeLonghi ({devices[0].name})",
-                        data={CONF_EMAIL: email, CONF_PASSWORD: password},
+                        data={
+                            CONF_EMAIL: email,
+                            CONF_PASSWORD: password,
+                            CONF_REGION: region,
+                        },
                     )
 
         return self.async_show_form(

@@ -4,13 +4,44 @@ from __future__ import annotations
 DOMAIN = "delonghi_coffeelink"
 MANUFACTURER = "De'Longhi"
 
-# Extracted from Coffee Link APK v4.9.6
+# EU app — extracted from Coffee Link APK v4.9.6.
 APP_ID = "DLonghiCoffeeIdKit-sQ-id"
 APP_SECRET = "DLonghiCoffeeIdKit-HT6b0VNd4y6CSha9ivM5k8navLw"
-GIGYA_API_KEY = "3_e5qn7USZK-QtsIso1wCelqUKAK_IVEsYshRIssQ-X-k55haiZXmKWDHDRul2e5Y2"
-GIGYA_BASE_URL = "https://accounts.eu1.gigya.com"
 AYLA_EU_ADS_URL = "https://ads-eu.aylanetworks.com"
 AYLA_EU_USER_URL = "https://user-field-eu.aylanetworks.com"
+
+# US app — extracted from the SAME Coffee Link APK v4.9.6 (the app bundles both
+# regions). Confirmed against user-field.aylanetworks.com via a token_sign_in
+# probe (HTTP 422 "Unable to login" = app_id recognized on the US shard; the EU
+# app_id returns 404 "Could not find application" there, and vice-versa).
+APP_ID_US = "DeLonghiCoffeeIdKit-yA-id"
+APP_SECRET_US = "DeLonghiCoffeeIdKit-2oUcfCkA0pUIACH8jSCwWsf1RcU"
+AYLA_US_ADS_URL = "https://ads-field.aylanetworks.com"
+AYLA_US_USER_URL = "https://user-field.aylanetworks.com"
+
+# Gigya identity is GLOBAL (eu1 datacenter) and shared by both regions — a US
+# account authenticates against this same Gigya app (verified: login succeeded
+# for a US account). Only the Ayla side (app_id/secret + endpoints) is regional.
+GIGYA_API_KEY = "3_e5qn7USZK-QtsIso1wCelqUKAK_IVEsYshRIssQ-X-k55haiZXmKWDHDRul2e5Y2"
+GIGYA_BASE_URL = "https://accounts.eu1.gigya.com"
+
+# Region registry — the auth chain (SSO) and all device/property calls switch
+# on the region chosen in the config flow.
+REGIONS = {
+    "eu": {
+        "app_id": APP_ID,
+        "app_secret": APP_SECRET,
+        "ads_url": AYLA_EU_ADS_URL,
+        "user_url": AYLA_EU_USER_URL,
+    },
+    "us": {
+        "app_id": APP_ID_US,
+        "app_secret": APP_SECRET_US,
+        "ads_url": AYLA_US_ADS_URL,
+        "user_url": AYLA_US_USER_URL,
+    },
+}
+DEFAULT_REGION = "eu"
 
 # Polling
 DEFAULT_SCAN_INTERVAL = 30  # seconds
@@ -46,6 +77,7 @@ CLOUD_TRANSIENT_HTTP_CODES = frozenset({429, 502, 503, 504})
 # Config
 CONF_EMAIL = "email"
 CONF_PASSWORD = "password"
+CONF_REGION = "region"
 
 # CRC16 AUG-CCITT
 CRC_POLY = 0x1021
