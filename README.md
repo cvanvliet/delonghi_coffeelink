@@ -1,11 +1,11 @@
-# De'Longhi Coffee Link for Home Assistant
+# Coffee Link — Chris's fork
 
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/actabi/delonghi_coffeelink?style=for-the-badge)](https://github.com/actabi/delonghi_coffeelink/releases)
+This is [Chris's fork (`cvanvliet/delonghi_coffeelink`)](https://github.com/cvanvliet/delonghi_coffeelink) of the [original Coffee Link integration](https://github.com/actabi/delonghi_coffeelink) for Home Assistant. The original author, Guillaume de Laroque ([@actabi](https://github.com/actabi)), and upstream contributors retain credit; see [Credits](#credits) and the [MIT license](LICENSE).
+
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge)](https://github.com/hacs/integration)
-[![License](https://img.shields.io/github/license/actabi/delonghi_coffeelink?style=for-the-badge)](LICENSE)
-[![Validate](https://img.shields.io/github/actions/workflow/status/actabi/delonghi_coffeelink/validate.yml?branch=main&style=for-the-badge)](https://github.com/actabi/delonghi_coffeelink/actions)
+[MIT license](LICENSE) · [Fork releases](https://github.com/cvanvliet/delonghi_coffeelink/releases) · [Fork workflow runs](https://github.com/cvanvliet/delonghi_coffeelink/actions)
 
-[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=actabi&repository=delonghi_coffeelink&category=integration) 
+[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=cvanvliet&repository=delonghi_coffeelink&category=integration) 
 [![Add Integration](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=delonghi_coffeelink)
 
 Home Assistant custom integration for DeLonghi PrimaDonna Soul and other Ayla-based DeLonghi coffee machines, controlled through the Coffee Link cloud.
@@ -66,13 +66,13 @@ A future version of this integration will include a local LAN server to bypass t
 
 **One-click install** - click the badge below (requires HACS already installed in your HA) :
 
-[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=actabi&repository=delonghi_coffeelink&category=integration)
+[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=cvanvliet&repository=delonghi_coffeelink&category=integration)
 
 Or manually :
 
 1. In HACS, click the 3-dots menu > Custom repositories
-2. Add `https://github.com/actabi/delonghi_coffeelink` as category **Integration**
-3. Install "De'Longhi Coffee Link"
+2. Add `https://github.com/cvanvliet/delonghi_coffeelink` as category **Integration**
+3. Install "Coffee Link — Chris's fork"
 4. Restart Home Assistant
 5. Click this badge to add the integration :
 
