@@ -276,7 +276,14 @@ class DelonghiCloudSessionAppIdSensor(_Base):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         app_id = self.native_value
-        attrs: dict[str, Any] = {"holder": _cloud_session_holder(app_id)}
+        connecting_task = self.coordinator._session_cold_task
+        attrs: dict[str, Any] = {
+            "holder": _cloud_session_holder(app_id),
+            "session_connecting": connecting_task is not None and not connecting_task.done(),
+            "session_confirmed": self.coordinator._session_confirmed,
+            "learned_start_count": len(self.coordinator.learned_start_frames),
+            "learned_stop_count": len(self.coordinator.learned_stop_frames),
+        }
         if app_id is not None:
             attrs["app_id_hex"] = f"{app_id & 0xFFFFFFFF:08x}"
         return attrs
